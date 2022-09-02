@@ -7,6 +7,9 @@ Template MARKET smart contract for a prediction market with assets that have ava
 ## MarketParameterized.sol
 Template MARKET smart contract for a prediction market with assets that are non-native to the deployment chain & do not have Chainlink (oracle) price feeds on mainnet.
 
+## MarketHybrid.sol
+Template MARKET smart contract for a prediction market with combination assets: one that is non-native to the deployment chain & do not have Chainlink (oracle) price feeds on mainnet, one that is native and has available Chainlink (oracle) price feeds on mainnet.
+
 ## MarketUtility.sol
 Helper contract for all types of MARKET smart contracts. Provides calculations and exposes an interface to oracles to get latest prices.
 
