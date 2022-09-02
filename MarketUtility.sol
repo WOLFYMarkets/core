@@ -155,7 +155,7 @@ contract WOLFYMarketUtility is Ownable {
         return (settlementPeriod, predictionQualifier, liquidityQualifier, mrtDivisor, WPACKRewardManagerAddr, WPACKStakingManagerAddr, operator);
     }
 
-    // get latest answer 
+    // get latest answer pair
     function getChainLinkLatestPricesUSD(address _feedAddress0, address _feedAddress1) public view returns (uint256 option0LatestPriceUSD, uint256 option1LatestPriceUSD) {
         int256 price0;
         int256 price1;
@@ -164,43 +164,50 @@ contract WOLFYMarketUtility is Ownable {
         return (uint256(price0), uint256(price1));
     }
 
+    // get latest answer single - for hybrid markets
+    function getChainLinkLatestPriceUSD(address _feedAddress) public view returns (uint256 latestPriceUSD) {
+        int256 price0;
+        (, price0 , , ,) = (AggregatorV3Interface(_feedAddress).latestRoundData());
+        return uint256(price0);
+    }
+
     function calculateMarketWinnerOraclized (uint256 option0InitPrice, address option0Feed, uint256 option1InitPrice, address option1Feed) public view returns (bool option, uint256 settlementPrice0, uint256 settlementPrice1) {
-            (uint256 option0SettlementPrice, uint256 option1SettlementPrice) =  getChainLinkLatestPricesUSD(option0Feed, option1Feed);
-            // both new prices have increased since init
-            if (option0SettlementPrice > option0InitPrice && option1SettlementPrice > option1InitPrice) {
-                uint256 asset0PercChange = _getPercentageChange(option0InitPrice, option0SettlementPrice);
-                uint256 asset1PercChange = _getPercentageChange(option1InitPrice, option1SettlementPrice);
-                // asset0 win
-                if (asset0PercChange > asset1PercChange) {
-                    return (true, option0SettlementPrice, option1SettlementPrice);
-                }
-                // asset1 win
-                else if (asset1PercChange > asset0PercChange) {
-                    return (false, option0SettlementPrice, option1SettlementPrice);
-                }
-            }
-            // 0 has increased but 1 has decreased/stayed the same
-            else if (option0SettlementPrice > option0InitPrice && option1SettlementPrice <= option1InitPrice) {
-                // asset0 auto wins
+        (uint256 option0SettlementPrice, uint256 option1SettlementPrice) =  getChainLinkLatestPricesUSD(option0Feed, option1Feed);
+        // both new prices have increased since init
+        if (option0SettlementPrice > option0InitPrice && option1SettlementPrice > option1InitPrice) {
+            uint256 asset0PercChange = _getPercentageChange(option0InitPrice, option0SettlementPrice);
+            uint256 asset1PercChange = _getPercentageChange(option1InitPrice, option1SettlementPrice);
+            // asset0 win
+            if (asset0PercChange > asset1PercChange) {
                 return (true, option0SettlementPrice, option1SettlementPrice);
             }
-            // 0 has increased but 1 has decreased/stayed the same
-            else if (option0SettlementPrice <= option0InitPrice && option1SettlementPrice > option1InitPrice) {
-                // asset1 auto wins
+            // asset1 win
+            else if (asset1PercChange > asset0PercChange) {
                 return (false, option0SettlementPrice, option1SettlementPrice);
             }
-            else if (option0SettlementPrice <= option0InitPrice && option1SettlementPrice <= option1InitPrice) {
-                uint256 asset0PercChange = _getPercentageChange(option0SettlementPrice, option0InitPrice);
-                uint256 asset1PercChange = _getPercentageChange(option1SettlementPrice, option1InitPrice);
-                // lower % decrease wins
-                if (asset0PercChange < asset1PercChange) {
-                    return (true, option0SettlementPrice, option1SettlementPrice);
-                }
-                else if (asset1PercChange < asset0PercChange) {
-                    return (false, option0SettlementPrice, option1SettlementPrice);
-                }
+        }
+        // 0 has increased but 1 has decreased/stayed the same
+        else if (option0SettlementPrice > option0InitPrice && option1SettlementPrice <= option1InitPrice) {
+            // asset0 auto wins
+            return (true, option0SettlementPrice, option1SettlementPrice);
+        }
+        // 0 has increased but 1 has decreased/stayed the same
+        else if (option0SettlementPrice <= option0InitPrice && option1SettlementPrice > option1InitPrice) {
+            // asset1 auto wins
+            return (false, option0SettlementPrice, option1SettlementPrice);
+        }
+        else if (option0SettlementPrice <= option0InitPrice && option1SettlementPrice <= option1InitPrice) {
+            uint256 asset0PercChange = _getPercentageChange(option0SettlementPrice, option0InitPrice);
+            uint256 asset1PercChange = _getPercentageChange(option1SettlementPrice, option1InitPrice);
+            // lower % decrease wins
+            if (asset0PercChange < asset1PercChange) {
+                return (true, option0SettlementPrice, option1SettlementPrice);
+            }
+            else if (asset1PercChange < asset0PercChange) {
+                return (false, option0SettlementPrice, option1SettlementPrice);
             }
         }
+    }
 
     function calulateMarketWinnerParameterized(uint256 option0InitPrice, uint256 option1InitPrice, uint256 option0SettlementPrice, uint256 option1SettlementPrice) public pure returns (bool option) {
         // both new prices have increased since init
@@ -238,6 +245,44 @@ contract WOLFYMarketUtility is Ownable {
             }
         }
     }
+
+    function calculateMarketWinnerHybrid(uint256 optionFeedInitPrice, address optionFeed, uint256 optionParamInitPrice, uint256 optionParamSettlementPrice) public view returns (bool option) {
+        uint256 optionFeedSettlementPrice = getChainLinkLatestPriceUSD(optionFeed);
+        // both new prices have increased since init
+        if (optionFeedSettlementPrice > optionFeedInitPrice && optionParamSettlementPrice > optionParamInitPrice) {
+            uint256 asset0PercChange = _getPercentageChange(optionFeedInitPrice, optionFeedSettlementPrice);
+            uint256 asset1PercChange = _getPercentageChange(optionParamInitPrice, optionParamSettlementPrice);
+            // asset0 win
+            if (asset0PercChange > asset1PercChange) {
+                return true;
+            }
+            // asset1 win
+            else if (asset1PercChange > asset0PercChange) {
+                return false;
+            }
+        }
+        // 0 has increased but 1 has decreased/stayed the same
+        else if (optionFeedSettlementPrice > optionFeedInitPrice && optionParamSettlementPrice <= optionParamInitPrice) {
+            // asset0 auto wins
+            return true;
+        }
+        // 0 has increased but 1 has decreased/stayed the same
+        else if (optionFeedSettlementPrice <= optionFeedInitPrice && optionParamSettlementPrice > optionParamInitPrice) {
+            // asset1 auto wins
+            return false;
+        }
+        else if (optionFeedSettlementPrice <= optionFeedInitPrice && optionParamSettlementPrice <= optionParamInitPrice) {
+            uint256 asset0PercChange = _getPercentageChange(optionFeedSettlementPrice, optionFeedInitPrice);
+            uint256 asset1PercChange = _getPercentageChange(optionParamSettlementPrice, optionParamInitPrice);
+            // lower % decrease wins
+            if (asset0PercChange < asset1PercChange) {
+                return true;
+            }
+            else if (asset1PercChange < asset0PercChange) {
+                return false;
+            }
+        }
+    } 
 
     // internal function to get percentage change between 2 values
     function _getPercentageChange(uint256 value1, uint256 value2) internal pure returns (uint256 percentageChange) {
