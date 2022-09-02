@@ -504,6 +504,13 @@ contract MarketParameterized is Ownable, ReentrancyGuard {
    
     IERC20 marketCurrency = IERC20(marketCurr);
 
+    event PredictionPlaced(address indexed predictor, bool option, uint256 timeframe, uint256 leverage, uint256 stake);
+    event PredictionWithdrawn(address indexed predictor, uint256 withdrawalAmount);
+    event LiquidityAdded(address indexed liquidityProvider, uint256 amount);
+    event LiquidityWithdrawn(address indexed liquidityProvider, uint256 withdrawalAmount);
+    event MarketRestarted(address caller, uint256 marketTimebox, uint256 timestamp);
+    event MarketSettled(address caller, uint256 marketTimebox, uint256 timestamp);
+
     // in case of governance change
     function changeMarketCurrency(address _newCurr) external onlyOwner {
         marketCurr = _newCurr;
@@ -567,6 +574,7 @@ contract MarketParameterized is Ownable, ReentrancyGuard {
                 revert("timeboxedMarkets: timeframe does not exist");
             }
         }
+        emit PredictionPlaced(_msgSender(), option, timeframe, leverage, _stake);
     }
 
     function withdrawPredictionBalance(uint256 timeframe, bool option, uint256 amount) external nonReentrant {
@@ -579,6 +587,8 @@ contract MarketParameterized is Ownable, ReentrancyGuard {
         predictionBalance[_msgSender()][timeframe][option] -= amount;
         totalPredicted -= amount;
         marketCurrency.safeTransferFrom(address(this), _msgSender(), amount);
+
+        emit PredictionWithdrawn(_msgSender(), amount);
     }
 
     function getPrediction(uint256 id) public view returns (address prdctr, uint256 prId, bool opt, uint256 tf, uint256 st, uint256 lev, uint256 sz) {
@@ -616,6 +626,8 @@ contract MarketParameterized is Ownable, ReentrancyGuard {
         liquidityProviders.push(_msgSender());
         liquidity += amount;
         marketCurrency.safeTransferFrom(_msgSender(), address(this), amount);
+
+        emit LiquidityAdded(_msgSender(), amount);
     }
 
     function getLiquidityBalance() external view returns (uint256 balance) {
@@ -640,6 +652,8 @@ contract MarketParameterized is Ownable, ReentrancyGuard {
         liquidity -= amount;
         lpBalances[_msgSender()] -= amount;
         marketCurrency.safeTransferFrom(address(this), _msgSender(), withdrawal);
+
+        emit LiquidityWithdrawn(_msgSender(), amount);
     }
 
     function removeLp(address lp) private {
@@ -707,6 +721,8 @@ contract MarketParameterized is Ownable, ReentrancyGuard {
         timeboxedMarketInitializationTimestamps[tf] = block.timestamp;
 
         notifyWOLFPACKRewardManager(_msgSender(), false, false, true);
+
+        emit MarketRestarted(_msgSender(), tf, block.timestamp);
     }
 
     function settleTimeboxedMarket(uint256 tf, uint256 settlePrice0, uint256 settlePrice1) external {
@@ -718,6 +734,8 @@ contract MarketParameterized is Ownable, ReentrancyGuard {
 
         executeSettlement(tf, settlePrice0, settlePrice1);
         notifyWOLFPACKRewardManager(_msgSender(), false, false, true);
+
+        emit MarketSettled(_msgSender(), tf, block.timestamp);
     }
 
     function executeSettlement(uint256 tf, uint256 currentPrice0, uint256 currentPrice1) private {
