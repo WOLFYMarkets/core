@@ -13,6 +13,9 @@ Template MARKET smart contract for a prediction market with combination assets: 
 ## MarketUtility.sol
 Helper contract for all types of MARKET smart contracts. Provides calculations and exposes an interface to oracles to get latest prices.
 
+## MarketLiquidity.sol
+Market currency staking & rewards contract that collects liquidity fees from predictions. Collected fees are are paid to stakers based on proportional stake amount and time staked for.
+
 ## WOLFPACKRewardManager.sol
 Tracks addresses eligible for WOLFPACK $WPACK rewards generated from incentivized public functions in other contracts. 
 
