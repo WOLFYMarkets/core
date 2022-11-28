@@ -4,7 +4,7 @@ Core smart contracts of WolfyStreetBets.
 ## MarketOraclized.sol
 Template MARKET smart contract for a prediction market with assets that have available Chainlink (oracle) price feeds on mainnet. 
 
-## MarketParameterized.sol
+## MarketParameterized.sol [DEPRECATED ~ MARKET MANIPULATION PROBABLE]
 Template MARKET smart contract for a prediction market with assets that are non-native to the deployment chain & do not have Chainlink (oracle) price feeds on mainnet.
 
 ## MarketHybrid.sol
