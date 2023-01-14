@@ -1,387 +1,177 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
-library SafeMath {
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 c = a + b;
-        require(c >= a, "SafeMath: addition overflow");
+/**
+ * @dev Interface of the ERC20 standard as defined in the EIP.
+ */
+interface IERC20 {
+    /**
+     * @dev Emitted when `value` tokens are moved from one account (`from`) to
+     * another (`to`).
+     *
+     * Note that `value` may be zero.
+     */
+    event Transfer(address indexed from, address indexed to, uint256 value);
 
-        return c;
-    }
+    /**
+     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
+     * a call to {approve}. `value` is the new allowance.
+     */
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return sub(a, b, "SafeMath: subtraction overflow");
-    }
+    /**
+     * @dev Returns the amount of tokens in existence.
+     */
+    function totalSupply() external view returns (uint256);
 
-    function sub(
-        uint256 a,
-        uint256 b,
-        string memory errorMessage
-    ) internal pure returns (uint256) {
-        require(b <= a, errorMessage);
-        uint256 c = a - b;
+    /**
+     * @dev Returns the amount of tokens owned by `account`.
+     */
+    function balanceOf(address account) external view returns (uint256);
 
-        return c;
-    }
+    /**
+     * @dev Moves `amount` tokens from the caller's account to `to`.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transfer(address to, uint256 amount) external returns (bool);
 
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        if (a == 0) {
-            return 0;
-        }
+    /**
+     * @dev Returns the remaining number of tokens that `spender` will be
+     * allowed to spend on behalf of `owner` through {transferFrom}. This is
+     * zero by default.
+     *
+     * This value changes when {approve} or {transferFrom} are called.
+     */
+    function allowance(address owner, address spender) external view returns (uint256);
 
-        uint256 c = a * b;
-        require(c / a == b, "SafeMath: multiplication overflow");
+    /**
+     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * IMPORTANT: Beware that changing an allowance with this method brings the risk
+     * that someone may use both the old and the new allowance by unfortunate
+     * transaction ordering. One possible solution to mitigate this race
+     * condition is to first reduce the spender's allowance to 0 and set the
+     * desired value afterwards:
+     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+     *
+     * Emits an {Approval} event.
+     */
+    function approve(address spender, uint256 amount) external returns (bool);
 
-        return c;
-    }
-
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return div(a, b, "SafeMath: division by zero");
-    }
-
-    function div(
-        uint256 a,
-        uint256 b,
-        string memory errorMessage
-    ) internal pure returns (uint256) {
-        require(b > 0, errorMessage);
-        uint256 c = a / b;
-
-        return c;
-    }
-
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        return mod(a, b, "SafeMath: modulo by zero");
-    }
-
-    function mod(
-        uint256 a,
-        uint256 b,
-        string memory errorMessage
-    ) internal pure returns (uint256) {
-        require(b != 0, errorMessage);
-        return a % b;
-    }
-}
-
-library Address {
-    function isContract(address account) internal view returns (bool) {
-        uint256 size;
-
-        assembly {
-            size := extcodesize(account)
-        }
-        return size > 0;
-    }
-
-    function sendValue(address payable recipient, uint256 amount) internal {
-        require(
-            address(this).balance >= amount,
-            "Address: insufficient balance"
-        );
-
-        (bool success, ) = recipient.call{value: amount}("");
-        require(
-            success,
-            "Address: unable to send value, recipient may have reverted"
-        );
-    }
-
-    function functionCall(address target, bytes memory data)
-        internal
-        returns (bytes memory)
-    {
-        return functionCall(target, data, "Address: low-level call failed");
-    }
-
-    function functionCall(
-        address target,
-        bytes memory data,
-        string memory errorMessage
-    ) internal returns (bytes memory) {
-        return functionCallWithValue(target, data, 0, errorMessage);
-    }
-
-    function functionCallWithValue(
-        address target,
-        bytes memory data,
-        uint256 value
-    ) internal returns (bytes memory) {
-        return
-            functionCallWithValue(
-                target,
-                data,
-                value,
-                "Address: low-level call with value failed"
-            );
-    }
-
-    function functionCallWithValue(
-        address target,
-        bytes memory data,
-        uint256 value,
-        string memory errorMessage
-    ) internal returns (bytes memory) {
-        require(
-            address(this).balance >= value,
-            "Address: insufficient balance for call"
-        );
-        require(isContract(target), "Address: call to non-contract");
-
-        (bool success, bytes memory returndata) =
-            target.call{value: value}(data);
-        return _verifyCallResult(success, returndata, errorMessage);
-    }
-
-    function functionStaticCall(address target, bytes memory data)
-        internal
-        view
-        returns (bytes memory)
-    {
-        return
-            functionStaticCall(
-                target,
-                data,
-                "Address: low-level static call failed"
-            );
-    }
-
-    function functionStaticCall(
-        address target,
-        bytes memory data,
-        string memory errorMessage
-    ) internal view returns (bytes memory) {
-        require(isContract(target), "Address: static call to non-contract");
-
-        (bool success, bytes memory returndata) = target.staticcall(data);
-        return _verifyCallResult(success, returndata, errorMessage);
-    }
-
-    function functionDelegateCall(address target, bytes memory data)
-        internal
-        returns (bytes memory)
-    {
-        return
-            functionDelegateCall(
-                target,
-                data,
-                "Address: low-level delegate call failed"
-            );
-    }
-
-    function functionDelegateCall(
-        address target,
-        bytes memory data,
-        string memory errorMessage
-    ) internal returns (bytes memory) {
-        require(isContract(target), "Address: delegate call to non-contract");
-
-        (bool success, bytes memory returndata) = target.delegatecall(data);
-        return _verifyCallResult(success, returndata, errorMessage);
-    }
-
-    function _verifyCallResult(
-        bool success,
-        bytes memory returndata,
-        string memory errorMessage
-    ) private pure returns (bytes memory) {
-        if (success) {
-            return returndata;
-        } else {
-            if (returndata.length > 0) {
-                assembly {
-                    let returndata_stake := mload(returndata)
-                    revert(add(32, returndata), returndata_stake)
-                }
-            } else {
-                revert(errorMessage);
-            }
-        }
-    }
-}
-
-library SafeERC20 {
-    using SafeMath for uint256;
-    using Address for address;
-
-    function safeTransfer(
-        IERC20 token,
-        address to,
-        uint256 value
-    ) internal {
-        callOptionalReturn(
-            token,
-            abi.encodeWithSelector(token.transfer.selector, to, value)
-        );
-    }
-
-    function safeTransferFrom(
-        IERC20 token,
+    /**
+     * @dev Moves `amount` tokens from `from` to `to` using the
+     * allowance mechanism. `amount` is then deducted from the caller's
+     * allowance.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transferFrom(
         address from,
         address to,
-        uint256 value
-    ) internal {
-        callOptionalReturn(
-            token,
-            abi.encodeWithSelector(token.transferFrom.selector, from, to, value)
-        );
-    }
-
-    function safeApprove(
-        IERC20 token,
-        address spender,
-        uint256 value
-    ) internal {
-        require(
-            (value == 0) || (token.allowance(address(this), spender) == 0),
-            "SafeERC20: approve from non-zero to non-zero allowance"
-        );
-        callOptionalReturn(
-            token,
-            abi.encodeWithSelector(token.approve.selector, spender, value)
-        );
-    }
-
-    function safeIncreaseAllowance(
-        IERC20 token,
-        address spender,
-        uint256 value
-    ) internal {
-        uint256 newAllowance =
-            token.allowance(address(this), spender).add(value);
-        callOptionalReturn(
-            token,
-            abi.encodeWithSelector(
-                token.approve.selector,
-                spender,
-                newAllowance
-            )
-        );
-    }
-
-    function safeDecreaseAllowance(
-        IERC20 token,
-        address spender,
-        uint256 value
-    ) internal {
-        uint256 newAllowance =
-            token.allowance(address(this), spender).sub(
-                value,
-                "SafeERC20: decreased allowance below zero"
-            );
-        callOptionalReturn(
-            token,
-            abi.encodeWithSelector(
-                token.approve.selector,
-                spender,
-                newAllowance
-            )
-        );
-    }
-
-    function callOptionalReturn(IERC20 token, bytes memory data) private {
-        require(address(token).isContract(), "SafeERC20: call to non-contract");
-
-        (bool success, bytes memory returndata) = address(token).call(data);
-        require(success, "SafeERC20: low-level call failed");
-
-        if (returndata.length > 0) {
-            // Return data is optional
-
-            require(
-                abi.decode(returndata, (bool)),
-                "SafeERC20: ERC20 operation did not succeed"
-            );
-        }
-    }
+        uint256 amount
+    ) external returns (bool);
 }
 
+/**
+ * @dev Provides information about the current execution context, including the
+ * sender of the transaction and its data. While these are generally available
+ * via msg.sender and msg.data, they should not be accessed in such a direct
+ * manner, since when dealing with meta-transactions the account sending and
+ * paying for execution may not be the actual sender (as far as an application
+ * is concerned).
+ *
+ * This contract is only required for intermediate, library-like contracts.
+ */
 abstract contract Context {
-    function _msgSender() internal view virtual returns (address payable) {
-        return payable(msg.sender);
+    function _msgSender() internal view virtual returns (address) {
+        return msg.sender;
     }
 
     function _msgData() internal view virtual returns (bytes calldata) {
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
         return msg.data;
     }
 }
 
+/**
+ * @dev Contract module which provides a basic access control mechanism, where
+ * there is an account (an owner) that can be granted exclusive access to
+ * specific functions.
+ */
 abstract contract Ownable is Context {
     address private _owner;
 
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    modifier validAddress(address addr) {
-
-
-    require(addr != address(0), "Address cannot be 0x0");
-    require(addr != address(this), "Address cannot be contract address");
-    _;
-    }
+    /**
+     * @dev Initializes the contract setting the deployer as the initial owner.
+     */
     constructor() {
-        address msgSender = _msgSender();
-        _owner = msgSender;
-        emit OwnershipTransferred(address(0), msgSender);
+        _transferOwnership(_msgSender());
     }
 
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        _checkOwner();
+        _;
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
     function owner() public view virtual returns (address) {
         return _owner;
     }
 
-    modifier onlyOwner() {
+    /**
+     * @dev Throws if the sender is not the owner.
+     */
+    function _checkOwner() internal view virtual {
         require(owner() == _msgSender(), "Ownable: caller is not the owner");
-        _;
     }
 
-   
-    function transferOwnership(address newOwner) public virtual onlyOwner validAddress(newOwner) {
-        require(
-            newOwner != address(0),
-            "Ownable: new owner is the zero address"
-        );
-        
-        emit OwnershipTransferred(_owner, newOwner);
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby removing any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public virtual onlyOwner {
+        _transferOwnership(address(0));
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        _transferOwnership(newOwner);
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Internal function without access restriction.
+     */
+    function _transferOwnership(address newOwner) internal virtual {
+        address oldOwner = _owner;
         _owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
 
-interface IERC20 {
-    
-     function decimals() external view returns (uint256);
-     
-    function totalSupply() external view returns (uint256);
-
-    function balanceOf(address account) external view returns (uint256);
-
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool);
-
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
-}
-
+/**
+ * @dev Contract module that helps prevent reentrant calls to a function.
+ */
 abstract contract ReentrancyGuard {
     // Booleans are more expensive than uint256 or any type that takes up a full
     // word because each write operation emits an extra SLOAD to first read the
@@ -407,129 +197,179 @@ abstract contract ReentrancyGuard {
      * @dev Prevents a contract from calling itself, directly or indirectly.
      * Calling a `nonReentrant` function from another `nonReentrant`
      * function is not supported. It is possible to prevent this from happening
-     * by making the `nonReentrant` function external, and make it call a
+     * by making the `nonReentrant` function external, and making it call a
      * `private` function that does the actual work.
      */
     modifier nonReentrant() {
+        _nonReentrantBefore();
+        _;
+        _nonReentrantAfter();
+    }
+
+    function _nonReentrantBefore() private {
         // On the first call to nonReentrant, _notEntered will be true
         require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
 
         // Any calls to nonReentrant after this point will fail
         _status = _ENTERED;
+    }
 
-        _;
-
+    function _nonReentrantAfter() private {
         // By storing the original value once again, a refund is triggered (see
         // https://eips.ethereum.org/EIPS/eip-2200)
         _status = _NOT_ENTERED;
     }
 }
 
+/// @title WOLFPACKStakingManager
+/// @author LONEWOLF
+///
+/// Staking contract for WOLFPACK tokens. 
+///
+/// Accounts may stake WOLFPACK tokens and be 
+/// rewarded with fee-generated market currency tokens.
+/// Rewards are weighted by proportional stake and time staked.
+
 contract WOLFPACKStakingManager is Ownable, ReentrancyGuard {
 
-    using SafeERC20 for IERC20;
-
-    IERC20 public WPACK;
-    IERC20 public REWARD;
-    uint256 public totalStaked;
-    address[] stakers;
-    address[] authorizedCallers;
-
-    mapping(address => uint256) balances;
-    mapping(address => uint256) rewardBalances;
-    
-    //address rewardCurr = payable(0xeD24FC36d5Ee211Ea25A80239Fb8C4Cfd80f12Ee); // testnet BUSD
-    //address wolfpack = payable(0x3445B126fA960C30E7FbF6d3d32d53c410e07399); // testnet WPACK
-
-    constructor(address _wolfpack, address _reward) {
-      WPACK = IERC20(_wolfpack);
-      REWARD = IERC20(_reward);
+    struct StakeData {
+        uint256 storedRewards;
+        uint256 timestamp;
     }
 
-    event Staked(address staker, uint256 amount);
-    event Unstaked(address staker, uint256 amount);
-    event RewardClaimed(address staker, uint256 reward);
-    event NotificationReceived(address rewardee);
+    mapping(address => uint256) public balances;
+    mapping(address => StakeData) public userStake;
+
+    uint256 public totalStaked;
+    uint256 public period;
+    uint256 rewards;
+
+    address[] private authorizedCallers;
+    address public WOLFPACKRewardContract;
+
+    IERC20 public wolfpackToken;
+    
+    constructor(address _wolfpack, address _WOLFPACKRewardContract, uint256 _period) {
+        wolfpackToken = IERC20(_wolfpack);
+        WOLFPACKRewardContract = _WOLFPACKRewardContract;
+        period = _period;
+    }
+
+    event Staked(address indexed staker, uint256 amount);
+    event Unstaked(address indexed staker, uint256 amount);
+    event RewardClaimed(address indexed staker, uint256 reward);
+    event NotificationReceived(address indexed rewardee);
+
+    function modifyWolfpackRewContract(address newContract) external onlyOwner {
+        WOLFPACKRewardContract = newContract;
+    }
+
+    function stake(uint256 amount) external payable {
+        require(amount > 0, "stake: invalid amount");
+        balances[msg.sender] += amount;
+        userStake[msg.sender].storedRewards = rewards;
+        userStake[msg.sender].timestamp = block.timestamp;
+        totalStaked += amount;
+        require(wolfpackToken.transferFrom(msg.sender, address(this), amount), "ERC20: transfer failed");
+        emit Staked(msg.sender, amount);
+    }
+
+    function withdraw(uint256 amount) public nonReentrant {
+        require(amount > 0 && amount <= balances[msg.sender], "withdraw: invalid amount");
+        if (amount == balances[msg.sender]) {
+            delete userStake[msg.sender];
+        }
+        totalStaked -= amount;
+        balances[msg.sender] -= amount;
+        uint256 withdrawFee = amount / 200;
+        uint256 netWithdraw = amount - withdrawFee;
+        sendWithdrawFee(withdrawFee);
+        require(wolfpackToken.transfer(msg.sender, netWithdraw), "ERC20: transfer failed");
+        emit Unstaked(msg.sender, amount);
+    }
+
+    function sendWithdrawFee(uint256 amount) private {
+        require(wolfpackToken.transfer(WOLFPACKRewardContract, amount), "ERC20: transfer failed");
+    }
+
+    function claimRewards(bool isExit) public nonReentrant {
+        uint256 rew = earned();
+        require(rew > 0, "no reward earned");
+        require(rew < rewards, "too many rewards");
+        if (!isExit) {
+            userStake[msg.sender].timestamp = block.timestamp; 
+        }
+        address payable recipient = payable(msg.sender);
+        recipient.transfer(rew);
+        emit RewardClaimed(msg.sender, rew);
+    }
+
+    function exit() external {
+        claimRewards(true);
+        withdraw(balances[msg.sender]);
+    }
+
+    function earned() public view returns (uint256) {
+        uint256 share = (balances[msg.sender] * 100) / totalStaked;
+        uint256 rate = getRate();
+        uint256 duration = block.timestamp - userStake[msg.sender].timestamp;
+        uint256 earn = (share * rate * duration) / 100;
+        return earn;
+    }
+
+    function getRate() private view returns (uint256) {
+        uint256 average;
+        uint256 r0 = userStake[msg.sender].storedRewards;
+        uint256 r1 = rewards;
+        if (r0 > r1) {
+            average = (r0 - r1) / 2;
+        }
+        else if (r1 > r0) {
+            average = (r1 -r0) / 2;
+        }
+        else if (r0 == r1) {
+            average = r0;
+        }
+        return (average / period);
+    }
+
+    function notifyReward(uint256 amount) public nonReentrant {
+        require(checkNotificationSource(msg.sender), "unauthorized caller");
+        rewards += amount;
+    }
+
+    function checkNotificationSource(address caller) private view returns (bool) {
+        bool auth;
+        uint256 len = authorizedCallers.length;
+        for (uint256 i; i < len; i++) {
+            address authCaller = authorizedCallers[i];
+            if (caller == authCaller) {
+                auth = true;
+            }
+        }
+        return auth;
+    }
+
+    function modifyPeriod(uint256 _period) external onlyOwner {
+        period = _period;
+    }
 
     function addAuthorizedCaller(address _caller) external onlyOwner {
         authorizedCallers.push(_caller);
     }
 
-    // 1.5 = uint256 1500000000000000000 (for 18 decimal point tokens e.g. BUSD)
-    function contractRewardBalance() public view returns (uint256 contractRewBalance) {
-        return REWARD.balanceOf(address(this));
-    }
-
-    function stake(uint256 amount) external {
-        require(amount > 0, "stake: invalid amount");
-        balances[_msgSender()] += amount;
-        totalStaked += amount;
-        stakers.push(_msgSender());
-        WPACK.safeTransferFrom(_msgSender(), address(this), amount);       
-        emit Staked(_msgSender(), amount);
-    }
-
-    function withdrawStake(uint256 amount) external nonReentrant {
-        uint256 bal = balances[_msgSender()];
-        require(amount > 0 && amount <= bal, "withdraw: invalid amount");
-        totalStaked -= amount;
-        balances[_msgSender()] -= amount;
-        if (amount == bal) {
-
-        }
-        WPACK.safeTransferFrom(address(this), _msgSender(), amount);
-        emit Unstaked(_msgSender(), amount);
-    }
-
-    function pendingReward() external view returns (uint256 _pendingReward) {
-        return rewardBalances[_msgSender()];
-    }
-
-    function claimReward() external nonReentrant {
-        uint256 rew = rewardBalances[_msgSender()];
-        REWARD.safeTransferFrom(address(this), _msgSender(), rew);
-        emit RewardClaimed(_msgSender(), rew);
-    }
-
-    function synchronizeRewardNotification(uint256 received) public {
-        bool authorized = checkNotificationSource(_msgSender());
-        require(authorized, "unauthorized caller");
-        // distribute rewards proportionally to rewardBalances
-        for (uint256 i; i < stakers.length; i++) {
-            address staker = stakers[i];
-            uint256 perc = (balances[staker] * 100) / totalStaked;
-            uint256 allocation = (perc * received) / 100;
-            balances[staker] += allocation;
-        }
-    }
-
-    function checkNotificationSource(address caller) private view returns (bool authorized) {
-        uint len = authorizedCallers.length;
-        for (uint256 i; i < len; i++) {
-            if (authorizedCallers[i] == caller) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function removeStaker(address staker) private {
-        uint256 len = stakers.length;
+    // market decommission
+    function removeAuthorizedCaller(address _caller) external onlyOwner {
+        uint256 len = authorizedCallers.length;
         for (uint256 i; i < len - 1; i++) {
-            while (stakers[i] == staker) {
+            while (authorizedCallers[i] == _caller) {
                 // shift index, pop. 
-                stakers[i] = stakers[i+1];   
+                authorizedCallers[i] = authorizedCallers[i + 1];   
             }
         }
-        stakers.pop();
+        authorizedCallers.pop();
     }
 
-    function stakedWPACK() external view returns (uint256 WPACKStaked) {
-        return balances[_msgSender()];
-    }
-
-    function balanceWPACK(address holder) external view returns (uint256 WPACKBalance) {
-        return WPACK.balanceOf(holder);
-    }
+    receive() external payable {}
 
 }
