@@ -2,84 +2,6 @@
 pragma solidity 0.8.17;
 
 /**
- * @dev Interface of the ERC20 standard as defined in the EIP.
- */
-interface IERC20 {
-    /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
-     */
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    /**
-     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
-     * a call to {approve}. `value` is the new allowance.
-     */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-
-    /**
-     * @dev Returns the amount of tokens in existence.
-     */
-    function totalSupply() external view returns (uint256);
-
-    /**
-     * @dev Returns the amount of tokens owned by `account`.
-     */
-    function balanceOf(address account) external view returns (uint256);
-
-    /**
-     * @dev Moves `amount` tokens from the caller's account to `to`.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transfer(address to, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Returns the remaining number of tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}. This is
-     * zero by default.
-     *
-     * This value changes when {approve} or {transferFrom} are called.
-     */
-    function allowance(address owner, address spender) external view returns (uint256);
-
-    /**
-     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * IMPORTANT: Beware that changing an allowance with this method brings the risk
-     * that someone may use both the old and the new allowance by unfortunate
-     * transaction ordering. One possible solution to mitigate this race
-     * condition is to first reduce the spender's allowance to 0 and set the
-     * desired value afterwards:
-     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-     *
-     * Emits an {Approval} event.
-     */
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Moves `amount` tokens from `from` to `to` using the
-     * allowance mechanism. `amount` is then deducted from the caller's
-     * allowance.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
-}
-
-/**
  * @dev Contract module that helps prevent reentrant calls to a function.
  */
 abstract contract ReentrancyGuard {
@@ -221,21 +143,25 @@ abstract contract Ownable is Context {
     }
 }
 
+interface IWOLFPACKStakingManager {
+    function notifyReward(uint256 amount) external;
+}
+
 interface IWOLFPACKRewardManager {
     function notifyReward(address rewardee, bool predictionQualified, bool liquidityQualified, bool managementQualified) external;
 }
 
 /// @title MarketLiquidity
-/// @author LONEWOLF
+/// @author 'LONEWOLF'
 ///
 /// Staking contract for MARKET currency tokens. 
-/// MARKET currency tokens collected by this contract (via prediction fees) are used 
-/// as a fallback in the unlikely event a prediction market payout does not meet the 
+/// MARKET currency (ETH) is collected by this contract (via prediction fees) and used 
+/// as a fallback in the event a prediction market payout does not meet the 
 /// MRT (Minimum Reward Threshold)
 ///
-/// Accounts may stake MARKET currency tokens and be 
-/// rewarded with fee-generated market currency tokens.
-/// Rewards are weighted by proportional stake and time staked.
+/// Accounts may stake MARKET currency (ETH) and be 
+/// rewarded with fee-generated market currency (ETH).
+/// Rewards weighted by proportional stake and time staked.
 
 contract MarketLiquidity is Ownable, ReentrancyGuard {
 
@@ -244,21 +170,18 @@ contract MarketLiquidity is Ownable, ReentrancyGuard {
         uint256 timestamp;
     }
 
-    mapping(address => uint256) private balances;
-    mapping(address => StakeData) private userStake;
+    mapping(address => uint256) public balances;
+    mapping(address => StakeData) public userStake;
 
     uint256 public totalStaked;
     uint256 public rewards; 
     uint256 public period;
     uint256 public qualifier;
-    address public WPACKRewardManagerAddr; // ADD ADDRESS
-    address public WPACKStakingManagerAddr; // ADD ADDRESS
+    address public WPACKRewardManager = 0x330509f78da0b9493d434b6CbdD04cbBf9177E23; 
+    address payable public WPACKStakingManager = payable(0xaB5A971eA792E4Cf0892d234fd49F6DA78d35d08); 
     address[] private authorizedCallers;
 
-    IERC20 public rewardsToken;
-
-    constructor(address _rewardsToken, uint256 _qualifier, uint256 _period) {
-        rewardsToken = IERC20(_rewardsToken);
+    constructor(uint256 _qualifier, uint256 _period) {
         qualifier = _qualifier;
         period = _period;
     }
@@ -288,20 +211,16 @@ contract MarketLiquidity is Ownable, ReentrancyGuard {
         authorizedCallers.pop();
     }
 
-    function modifyToken(address newToken) external onlyOwner {
-        rewardsToken = IERC20(newToken);
-    }
-
     function modifyQualifier(uint256 _qualifier) external onlyOwner {
         qualifier = _qualifier;
     }
 
-    function modifyWPACKRewardManagerAddr(address _WPACKRewardManagerAddr) external onlyOwner {
-        WPACKRewardManagerAddr = _WPACKRewardManagerAddr;
+    function modifyWPACKStakingManagerAddr(address payable _WPACKStakingManager) external onlyOwner {
+        WPACKStakingManager = _WPACKStakingManager;
     }
 
-    function stake(uint256 amount) external {
-        require(amount > 0, "invalid amount");
+    function stake(uint256 amount) external payable {
+        require(amount > 0 && amount == msg.value, "invalid amount");
         if (amount >= qualifier) {
             notifyWOLFPACKRewardManager(msg.sender);
         }
@@ -309,7 +228,6 @@ contract MarketLiquidity is Ownable, ReentrancyGuard {
         userStake[msg.sender].storedRewards = rewards;
         userStake[msg.sender].timestamp = block.timestamp;
         totalStaked += amount;
-        require(rewardsToken.transferFrom(msg.sender, address(this), amount), "ERC20: transfer failed");
         emit Staked(msg.sender, amount);
     }
 
@@ -320,7 +238,9 @@ contract MarketLiquidity is Ownable, ReentrancyGuard {
         distributeWithdrawalFee(fee);
         uint256 withdrawal = amount - fee;
         balances[msg.sender] -= amount;
-        require(rewardsToken.transfer(msg.sender, withdrawal), "ERC20: transfer failed");
+        address payable recipient = payable(msg.sender);
+        (bool success, ) = recipient.call{value: withdrawal}("");
+        require(success, "failed to send ether");
         emit Withdrawn(msg.sender, withdrawal);
     }
 
@@ -331,7 +251,10 @@ contract MarketLiquidity is Ownable, ReentrancyGuard {
         if (!isExit) {
             userStake[msg.sender].timestamp = block.timestamp; 
         }
-        require(rewardsToken.transfer(msg.sender, rew), "ERC20: transfer failed");
+        address payable recipient = payable(msg.sender);
+        (bool success, ) = recipient.call{value: rew}("");
+        require(success, "failed to send ether");
+        emit RewardClaimed(msg.sender, rew);
     }
 
     function exit() external {
@@ -339,7 +262,7 @@ contract MarketLiquidity is Ownable, ReentrancyGuard {
         withdraw(balances[msg.sender]);
     }
 
-    function compound() external {
+    function compound() external nonReentrant {
         uint256 rew = earned();
         require(rew > 0, "no reward earned");
         balances[msg.sender] += rew;
@@ -349,7 +272,7 @@ contract MarketLiquidity is Ownable, ReentrancyGuard {
     }
 
     function earned() public view returns (uint256) {
-        uint256 share = totalStaked / balances[msg.sender];
+        uint256 share = (balances[msg.sender] * 100) /  totalStaked;
         uint256 rate = getRate();
         uint256 duration = block.timestamp - userStake[msg.sender].timestamp;
         uint256 earn = (share * rate * duration) / 100;
@@ -377,8 +300,7 @@ contract MarketLiquidity is Ownable, ReentrancyGuard {
         rewards += amount;
     }
 
-    function requestMarketPayout(uint256 payout) public {
-        require(checkNotificationSource(msg.sender), "unauthorized caller");
+    function requestMarketPayout(uint256 payout) public view returns (uint256) {
         uint256 ret;
         if (payout < rewards) {
             ret = rewards - payout;
@@ -386,17 +308,27 @@ contract MarketLiquidity is Ownable, ReentrancyGuard {
         else {
             ret = rewards;
         }
-        uint256 balance = rewardsToken.balanceOf(address(this));
-        require(balance <= ret, "return exceeds token balance");
-        rewards -= ret;
-        require(rewardsToken.transfer(msg.sender, ret), "ERC20: transfer failed");
-        emit MarketPayoutExecuted(msg.sender, ret);
+        return ret;
+    }
+
+    function getMarketPayout(uint256 amount) public nonReentrant {
+        require(checkNotificationSource(msg.sender), "unauthorized caller");
+        require(address(this).balance <= amount, "return exceeds contract balance");
+        rewards -= amount;
+        address payable marketCaller = payable(msg.sender); 
+        (bool success, ) = marketCaller.call{value: amount}("");
+        require(success, "failed to send ether");
+        emit MarketPayoutExecuted(msg.sender, amount);
     }
 
     function distributeWithdrawalFee(uint256 fee) private {
         uint256 dividend = fee / 2;
-        rewardsToken.transfer(owner(), dividend);
-        rewardsToken.transfer(WPACKStakingManagerAddr, dividend);
+        IWOLFPACKStakingManager(WPACKStakingManager).notifyReward(dividend);
+        address payable operator = payable(owner());
+        (bool successOwner, ) = operator.call{value: dividend}("");
+        require(successOwner, "failed to send ether");
+        (bool successContract, ) = WPACKStakingManager.call{value: dividend}("");
+        require(successContract, "failed to send ether");
     }
 
     function checkNotificationSource(address caller) private view returns (bool) {
@@ -412,15 +344,9 @@ contract MarketLiquidity is Ownable, ReentrancyGuard {
     }
 
     function notifyWOLFPACKRewardManager(address rewardee) private {
-        IWOLFPACKRewardManager(WPACKRewardManagerAddr).notifyReward(rewardee, false, true, false);
+        IWOLFPACKRewardManager(WPACKRewardManager).notifyReward(rewardee, false, true, false);
     }
 
-    function contractRewardBalance() external view returns (uint256) {
-        return rewardsToken.balanceOf(address(this));
-    }
-
-    function balanceOf(address account) external view returns (uint256) {
-        return balances[account];
-    }
+    receive() external payable {}
 
 }
